@@ -65,4 +65,591 @@
                 </div>
 
                 <div class="tab-content" id="previewTab">
-                    <div id="previewContent
+                    <div id="previewContent"></div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>Створено для полегшення переносу статей в WordPress. <a href="https://github.com/artemutka/md-to-wordpress-converter" target="_blank">Код на GitHub</a></p>
+        </footer>
+    </div>
+
+    <!-- Підключаємо необхідні бібліотеки -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <script>
+        // Глобальні змінні
+        let zipFile = null;
+        let processedHtml = '';
+        let processedImages = [];
+        let originalImages = {};
+        
+        // DOM елементи
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const processButton = document.getElementById('processButton');
+        const processingSection = document.getElementById('processingSection');
+        const progressBar = document.getElementById('progressBar');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultsSection = document.getElementById('resultsSection');
+        const htmlContent = document.getElementById('htmlContent');
+        const imagesList = document.getElementById('imagesList');
+        const previewContent = document.getElementById('previewContent');
+        const copyHtmlButton = document.getElementById('copyHtmlButton');
+        const downloadHtmlButton = document.getElementById('downloadHtmlButton');
+        const downloadImagesButton = document.getElementById('downloadImagesButton');
+        
+        // Обробники для вкладок
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                
+                // Видаляємо активний клас з усіх вкладок
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Додаємо активний клас вибраній вкладці
+                this.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Обробники подій для перетягування та завантаження файлів
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('active');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('active');
+        }
+        
+        // Обробник перетягування файлу
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0 && files[0].type === 'application/zip') {
+                handleFiles(files);
+            } else {
+                alert('Будь ласка, виберіть ZIP-файл.');
+            }
+        }
+        
+        // Обробник вибору файлу через діалог
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                if (this.files[0].type === 'application/zip') {
+                    handleFiles(this.files);
+                } else {
+                    alert('Будь ласка, виберіть ZIP-файл.');
+                    this.value = '';
+                }
+            }
+        });
+        
+        // Обробка вибраних файлів
+        function handleFiles(files) {
+            zipFile = files[0];
+            fileName.textContent = zipFile.name;
+            fileInfo.style.display = 'block';
+        }
+        
+        // Обробник кнопки обробки файлу
+        processButton.addEventListener('click', processZipFile);
+        
+        // Функція обробки ZIP-файлу
+        async function processZipFile() {
+            if (!zipFile) {
+                alert('Будь ласка, спочатку виберіть ZIP-файл.');
+                return;
+            }
+            
+            // Показуємо розділ обробки та приховуємо інші
+            processingSection.style.display = 'block';
+            fileInfo.style.display = 'none';
+            resultsSection.style.display = 'none';
+            
+            try {
+                // Читаємо ZIP-файл
+                updateProgress(10, 'Читання ZIP-файлу...');
+                const zip = await JSZip.loadAsync(zipFile);
+                
+                // Знаходимо файл MD або HTML
+                updateProgress(20, 'Пошук файлу статті...');
+                let contentFile = null;
+                let contentFileName = '';
+                let contentType = '';
+                
+                // Спочатку шукаємо MD-файл
+                zip.forEach((relativePath, zipEntry) => {
+                    if (!zipEntry.dir && relativePath.toLowerCase().endsWith('.md')) {
+                        contentFile = zipEntry;
+                        contentFileName = relativePath;
+                        contentType = 'markdown';
+                    }
+                });
+                
+                // Якщо MD не знайдено, шукаємо HTML
+                if (!contentFile) {
+                    zip.forEach((relativePath, zipEntry) => {
+                        if (!zipEntry.dir && relativePath.toLowerCase().endsWith('.html')) {
+                            contentFile = zipEntry;
+                            contentFileName = relativePath;
+                            contentType = 'html';
+                        }
+                    });
+                }
+                
+                // Якщо HTML не знайдено, шукаємо DOCX
+                if (!contentFile) {
+                    zip.forEach((relativePath, zipEntry) => {
+                        if (!zipEntry.dir && relativePath.toLowerCase().endsWith('.docx.md')) {
+                            contentFile = zipEntry;
+                            contentFileName = relativePath;
+                            contentType = 'markdown';
+                        }
+                    });
+                }
+                
+                if (!contentFile) {
+                    throw new Error('Не вдалося знайти файл статті (MD, HTML або DOCX) у ZIP-архіві.');
+                }
+                
+                updateProgress(30, `Знайдено файл: ${contentFileName}`);
+                
+                // Читаємо вміст файлу
+                updateProgress(40, 'Читання вмісту файлу...');
+                const content = await contentFile.async('string');
+                
+                // Збираємо зображення
+                updateProgress(50, 'Пошук зображень...');
+                originalImages = {};
+                
+                // Шукаємо зображення в директорії "images" або в кореневій директорії
+                const imageEntries = [];
+                zip.forEach((relativePath, zipEntry) => {
+                    if (!zipEntry.dir) {
+                        const isImageFile = /\.(jpe?g|png|gif|svg)$/i.test(relativePath);
+                        const isInImagesDir = relativePath.startsWith('images/');
+                        const isImageAtRoot = /^image\d+\.(jpe?g|png|gif|svg)$/i.test(relativePath.split('/').pop());
+                        
+                        if (isImageFile && (isInImagesDir || isImageAtRoot)) {
+                            imageEntries.push({
+                                path: relativePath,
+                                entry: zipEntry
+                            });
+                        }
+                    }
+                });
+                
+                updateProgress(60, `Знайдено ${imageEntries.length} зображень`);
+                
+                // Прочитаємо всі зображення
+                for (let i = 0; i < imageEntries.length; i++) {
+                    const imgData = await imageEntries[i].entry.async('blob');
+                    originalImages[imageEntries[i].path] = {
+                        blob: imgData,
+                        newName: ''
+                    };
+                    
+                    updateProgress(60 + Math.floor((i / imageEntries.length) * 20), 
+                                   `Зчитування зображень: ${i+1}/${imageEntries.length}`);
+                }
+                
+                // Обробляємо контент
+                updateProgress(80, 'Обробка вмісту...');
+                
+                // Обробляємо в залежності від типу файлу
+                if (contentType === 'markdown') {
+                    processedHtml = convertMarkdownToWordPress(content);
+                } else {
+                    processedHtml = convertHtmlToWordPress(content);
+                }
+                
+                // Оновлюємо назви зображень
+                updateProgress(90, 'Перейменування зображень...');
+                processedImages = processAndRenameImages(content, originalImages);
+                
+                // Завершуємо обробку
+                updateProgress(100, 'Обробка завершена!');
+                
+                // Показуємо результати
+                displayResults();
+                
+            } catch (error) {
+                console.error('Помилка обробки ZIP-файлу:', error);
+                statusMessage.textContent = `Помилка: ${error.message}`;
+                progressBar.style.width = '100%';
+                progressBar.style.backgroundColor = 'var(--error-color)';
+            }
+        }
+        
+        // Функція для конвертації Markdown в HTML для WordPress
+        function convertMarkdownToWordPress(markdown) {
+            // Вилучаємо заголовки для створення змісту
+            const headings = extractHeadings(markdown);
+            const tableOfContents = generateTableOfContents(headings);
+            
+            // Перетворюємо Markdown на HTML
+            let html = markdown;
+            
+            // Конвертуємо заголовки з якорями
+            html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+            html = html.replace(/^## (.*?)$/gm, function(match, heading) {
+                const anchor = heading.toLowerCase()
+                    .replace(/[^\w\s-]/g, '')
+                    .replace(/\s+/g, '-');
+                return `<h2 id="${anchor}">${heading}</h2>`;
+            });
+            html = html.replace(/^### (.*?)$/gm, function(match, heading) {
+                const anchor = heading.toLowerCase()
+                    .replace(/[^\w\s-]/g, '')
+                    .replace(/\s+/g, '-');
+                return `<h3 id="${anchor}">${heading}</h3>`;
+            });
+            
+            // Конвертуємо таблиці
+            html = convertTablesToHtml(html);
+            
+            // Конвертуємо зображення
+            html = convertImagesToWordPress(html);
+            
+            // Конвертуємо списки
+            html = convertLists(html);
+            
+            // Конвертуємо посилання
+            html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+            
+            // Конвертуємо жирний та курсив
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Об'єднуємо все
+            return tableOfContents + '\n\n' + html;
+        }
+        
+        // Функція для конвертації HTML в HTML для WordPress
+        function convertHtmlToWordPress(html) {
+            // Тут можна додати додаткові перетворення для HTML
+            // В базовому варіанті просто повертаємо як є
+            return html;
+        }
+        
+        // Функція для вилучення заголовків
+        function extractHeadings(markdown) {
+            const headings = [];
+            const lines = markdown.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.startsWith('## ')) {
+                    const headingText = line.replace('## ', '').trim();
+                    const anchor = headingText.toLowerCase()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/\s+/g, '-');
+                    
+                    headings.push({
+                        text: headingText,
+                        anchor: anchor,
+                        level: 2
+                    });
+                } else if (line.startsWith('### ')) {
+                    const headingText = line.replace('### ', '').trim();
+                    const anchor = headingText.toLowerCase()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/\s+/g, '-');
+                    
+                    headings.push({
+                        text: headingText,
+                        anchor: anchor,
+                        level: 3
+                    });
+                }
+            }
+            
+            return headings;
+        }
+        
+        // Функція для генерації змісту
+        function generateTableOfContents(headings) {
+            if (headings.length === 0) return '';
+            
+            let tocHtml = '<div class="content-wrap">\n<h4>Зміст</h4>\n<ol class="nav-items">\n';
+            
+            headings.forEach(heading => {
+                const indent = heading.level > 2 ? '\t' : '';
+                tocHtml += `${indent} \t<li><a href="#${heading.anchor}">${heading.text}</a></li>\n`;
+            });
+            
+            tocHtml += '</ol>\n</div>';
+            return tocHtml;
+        }
+        
+        // Функція для перетворення таблиць
+        function convertTablesToHtml(markdown) {
+            let result = markdown;
+            const tableRegex = /\|[\s\S]*?\|\n\|[\s\S]*?\|\n((\|[\s\S]*?\|\n)+)/g;
+            const tables = markdown.match(tableRegex);
+            
+            if (tables) {
+                tables.forEach(tableText => {
+                    const rows = tableText.trim().split('\n');
+                    const headerRow = rows[0];
+                    const dataRows = rows.slice(2);
+                    
+                    // Парсимо заголовок
+                    const headers = headerRow.split('|')
+                        .filter(cell => cell.trim() !== '')
+                        .map(cell => cell.trim());
+                    
+                    // Створюємо HTML-таблицю
+                    let tableHtml = '<table class="wp-table">\n<thead>\n<tr>\n';
+                    
+                    // Додаємо заголовки
+                    headers.forEach(header => {
+                        tableHtml += `<th>${header}</th>\n`;
+                    });
+                    
+                    tableHtml += '</tr>\n</thead>\n<tbody>\n';
+                    
+                    // Додаємо рядки з даними
+                    dataRows.forEach(row => {
+                        const cells = row.split('|')
+                            .filter(cell => cell.trim() !== '')
+                            .map(cell => cell.trim());
+                        
+                        tableHtml += '<tr>\n';
+                        cells.forEach(cell => {
+                            tableHtml += `<td>${cell}</td>\n`;
+                        });
+                        tableHtml += '</tr>\n';
+                    });
+                    
+                    tableHtml += '</tbody>\n</table>';
+                    
+                    // Замінюємо таблицю в результаті
+                    result = result.replace(tableText, tableHtml);
+                });
+            }
+            
+            return result;
+        }
+        
+        // Функція для перетворення зображень
+        function convertImagesToWordPress(markdown) {
+            let result = markdown;
+            // Шукаємо як ![][imageX] так і ![][imageX]  ***Caption text***
+            const imageRegex = /!\[\]\[image(\d+)\](\s+\*\*\*(.*?)\*\*\*)?/g;
+            let match;
+            
+            while ((match = imageRegex.exec(markdown)) !== null) {
+                const imageNumber = match[1];
+                const captionText = match[3] ? match[3].trim() : '';
+                
+                // Створюємо WordPress-формат зображення з підписом
+                const imageHtml = captionText 
+                    ? `[caption align="aligncenter" width="100%"]<img src="https://xgate.dental/wp-content/uploads/2025/04/image-${imageNumber}.png" alt="${captionText}" /> ${captionText}[/caption]`
+                    : `<img src="https://xgate.dental/wp-content/uploads/2025/04/image-${imageNumber}.png" alt="Image ${imageNumber}" />`;
+                
+                // Замінюємо Markdown-зображення на HTML
+                result = result.replace(match[0], imageHtml);
+            }
+            
+            return result;
+        }
+        
+        // Функція для обробки списків
+        function convertLists(markdown) {
+            let result = markdown;
+            
+            // Шукаємо маркіровані списки та перетворюємо їх
+            const bulletListRegex = /^\* (.*?)$/gm;
+            result = result.replace(bulletListRegex, '<li>$1</li>');
+            
+            // Огортаємо сусідні елементи списку в теги <ul>
+            let resultLines = result.split('\n');
+            let inList = false;
+            
+            for (let i = 0; i < resultLines.length; i++) {
+                if (resultLines[i].startsWith('<li>')) {
+                    if (!inList) {
+                        resultLines[i] = '<ul>\n' + resultLines[i];
+                        inList = true;
+                    }
+                } else if (inList) {
+                    resultLines[i-1] = resultLines[i-1] + '\n</ul>';
+                    inList = false;
+                }
+            }
+            
+            // Закриваємо останній список, якщо він відкритий
+            if (inList) {
+                resultLines[resultLines.length-1] += '\n</ul>';
+            }
+            
+            return resultLines.join('\n');
+        }
+        
+        // Функція для обробки та перейменування зображень
+        function processAndRenameImages(content, images) {
+            const processedImages = [];
+            const imageCaptions = {};
+            
+            // Знаходимо всі підписи до зображень у форматі ![][imageX]  ***Caption text***
+            const captionRegex = /!\[\]\[image(\d+)\]\s+\*\*\*(.*?)\*\*\*/g;
+            let captionMatch;
+            
+            while ((captionMatch = captionRegex.exec(content)) !== null) {
+                const imageNum = captionMatch[1];
+                const caption = captionMatch[2].trim();
+                imageCaptions[imageNum] = caption;
+            }
+            
+            // Перебираємо всі зображення та створюємо нові назви
+            Object.keys(images).forEach((imagePath) => {
+                const imageFile = imagePath.split('/').pop();
+                const imageMatch = imageFile.match(/image(\d+)\.(jpe?g|png|gif|svg)$/i);
+                
+                if (imageMatch) {
+                    const imageNum = imageMatch[1];
+                    const imageExt = imageMatch[2];
+                    const caption = imageCaptions[imageNum] || '';
+                    
+                    let newName = '';
+                    if (caption) {
+                        // Створюємо нову назву на основі підпису
+                        newName = caption.toLowerCase()
+                            .replace(/youtube.*?\//, '')
+                            .replace(/[^\wа-яґєіїё\s-]/gi, '')
+                            .replace(/\s+/g, '-')
+                            .substring(0, 50);
+                        
+                        // Додаємо розширення файлу
+                        newName = `${newName}.${imageExt}`;
+                    } else {
+                        // Якщо немає підпису, залишаємо оригінальну назву
+                        newName = imageFile;
+                    }
+                    
+                    // Зберігаємо нову назву
+                    images[imagePath].newName = newName;
+                    
+                    // Додаємо до масиву оброблених зображень
+                    processedImages.push({
+                        originalPath: imagePath,
+                        originalName: imageFile,
+                        newName: newName,
+                        blob: images[imagePath].blob,
+                        caption: caption
+                    });
+                }
+            });
+            
+            return processedImages;
+        }
+        
+        // Функція для оновлення індикатора прогресу
+        function updateProgress(percent, message) {
+            progressBar.style.width = percent + '%';
+            statusMessage.textContent = message;
+        }
+        
+        // Функція для відображення результатів
+        function displayResults() {
+            // Приховуємо розділ обробки та показуємо розділ результатів
+            processingSection.style.display = 'none';
+            resultsSection.style.display = 'block';
+            
+            // Відображаємо оброблений HTML
+            htmlContent.textContent = processedHtml;
+            
+            // Відображаємо перелік зображень
+            imagesList.innerHTML = '';
+            
+            processedImages.forEach(image => {
+                const imageItem = document.createElement('div');
+                imageItem.className = 'image-item';
+                
+                // Створюємо мініатюру зображення
+                const imgElement = document.createElement('img');
+                imgElement.src = URL.createObjectURL(image.blob);
+                imageItem.appendChild(imgElement);
+                
+                // Додаємо оригінальну назву
+                const originalNameElement = document.createElement('div');
+                originalNameElement.className = 'image-name';
+                originalNameElement.textContent = `Оригінал: ${image.originalName}`;
+                imageItem.appendChild(originalNameElement);
+                
+                // Додаємо нову назву
+                const newNameElement = document.createElement('div');
+                newNameElement.className = 'image-new-name';
+                newNameElement.textContent = `Нова назва: ${image.newName}`;
+                imageItem.appendChild(newNameElement);
+                
+                imagesList.appendChild(imageItem);
+            });
+            
+            // Показуємо попередній перегляд HTML
+            previewContent.innerHTML = processedHtml;
+            
+            // Додаємо обробники подій для кнопок
+            copyHtmlButton.addEventListener('click', () => {
+                navigator.clipboard.writeText(processedHtml)
+                    .then(() => {
+                        alert('HTML скопійовано в буфер обміну!');
+                    })
+                    .catch(err => {
+                        console.error('Помилка копіювання HTML: ', err);
+                        alert('Помилка копіювання HTML. Спробуйте виділити та скопіювати вручну.');
+                    });
+            });
+            
+            downloadHtmlButton.addEventListener('click', () => {
+                const blob = new Blob([processedHtml], { type: 'text/html;charset=utf-8' });
+                saveAs(blob, 'wordpress-article.html');
+            });
+            
+            downloadImagesButton.addEventListener('click', async () => {
+                const imagesZip = new JSZip();
+                
+                // Додаємо всі перейменовані зображення до архіву
+                processedImages.forEach(image => {
+                    imagesZip.file(image.newName, image.blob);
+                });
+                
+                // Генеруємо ZIP-файл та завантажуємо його
+                const content = await imagesZip.generateAsync({ type: 'blob' });
+                saveAs(content, 'wordpress-images.zip');
+            });
+        }
+    </script>
+</body>
+</html>
