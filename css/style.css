@@ -1,0 +1,366 @@
+:root {
+    --primary-color: #2271b1;
+    --secondary-color: #135e96;
+    --light-color: #f0f0f1;
+    --dark-color: #1d2327;
+    --success-color: #00a32a;
+    --warning-color: #dba617;
+    --error-color: #d63638;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f0f6fc;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+header h1 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+.drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.drop-area:hover, .drop-area.active {
+    border-color: var(--primary-color);
+    background-color: rgba(34, 113, 177, 0.05);
+}
+
+.drop-area i {
+    font-size: 48px;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.upload-button, .process-button, .action-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+.upload-button:hover, .process-button:hover, .action-button:hover {
+    background-color: var(--secondary-color);
+}
+
+.file-info {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.file-info p {
+    margin-bottom: 15px;
+}
+
+.progress {
+    height: 20px;
+    background-color: #e0e0e0;
+    border-radius: 10px;
+    margin: 20px 0;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    width: 0%;
+    transition: width 0.3s;
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+.tab-button.active {
+    opacity: 1;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.actions {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.code-block {
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 5px;
+    overflow: auto;
+    font-family: 'Courier New', monospace;
+    height: 400px;
+    white-space: pre-wrap;
+}
+
+.images-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.image-item {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.image-item img {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 10px;
+}
+
+.image-name {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.image-new-name {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+#previewContent {
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: white;
+    height: 600px;
+    overflow: auto;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+footer {
+    text-align: center;
+    margin-top: 30px;
+    color: #666;
+    font-size: 14px;
+}
+
+footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+/* Стилі для preview контенту */
+#previewContent h1,
+#previewContent h2,
+#previewContent h3,
+#previewContent h4 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    color: var(--primary-color);
+}
+
+#previewContent h1 {
+    font-size: 2em;
+}
+
+#previewContent h2 {
+    font-size: 1.5em;
+}
+
+#previewContent h3 {
+    font-size: 1.25em;
+}
+
+#previewContent p {
+    margin-bottom: 1em;
+}
+
+#previewContent ul, 
+#previewContent ol {
+    margin-left: 2em;
+    margin-bottom: 1em;
+}
+
+#previewContent img {
+    max-width: 100%;
+    height: auto;
+    margin: 1em 0;
+}
+
+#previewContent table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+#previewContent table, 
+#previewContent th, 
+#previewContent td {
+    border: 1px solid #ddd;
+}
+
+#previewContent th, 
+#previewContent td {
+    padding: 8px;
+    text-align: left;
+}
+
+#previewContent th {
+    background-color: #f5f5f5;
+}
+
+#previewContent .content-wrap {
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+#previewContent .nav-items {
+    margin-left: 1.5em;
+}
+
+#previewContent .nav-items a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+#previewContent .nav-items a:hover {
+    text-decoration: underline;
+}
+
+/* Адаптивний дизайн */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    section {
+        padding: 15px;
+    }
+    
+    .drop-area {
+        padding: 20px;
+    }
+    
+    .images-list {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    
+    .tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-button {
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+    
+    .code-block {
+        height: 300px;
+    }
+    
+    #previewContent {
+        height: 400px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5em;
+    }
+    
+    .drop-area i {
+        font-size: 36px;
+    }
+    
+    .images-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .actions {
+        flex-direction: column;
+    }
+    
+    .action-button {
+        width: 100%;
+    }
+}
