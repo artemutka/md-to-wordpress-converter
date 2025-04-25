@@ -239,3 +239,34 @@ function cleanGoogleDocsHtml(html) {
                 
                 // Заменяем изображение на изображение с подписью
                 img.parentNode.replaceChild(wpImage, img);
+                
+                // Удаляем элемент с подписью, так как он теперь внутри caption
+                captionEl.parentNode.removeChild(captionEl);
+            }
+        });
+    };
+    
+    processImageCaptions();
+    
+    // 10. Обработка заголовков из Google Docs для корректного оглавления
+    function cleanGoogleDocsHeadings() {
+        // Находим все заголовки с идентификаторами h.XXX
+        const headings = doc.querySelectorAll('h1[id^="h."], h2[id^="h."], h3[id^="h."], h4[id^="h."], h5[id^="h."], h6[id^="h."]');
+        
+        headings.forEach(heading => {
+            // Создаем более читабельный идентификатор из текста заголовка
+            const text = heading.textContent.trim();
+            const newId = text
+                .toLowerCase()
+                .replace(/[^a-zа-яёіїєґ0-9\s-]/g, '')
+                .replace(/\s+/g, '-');
+            
+            // Устанавливаем новый идентификатор
+            heading.id = newId;
+        });
+    }
+    
+    cleanGoogleDocsHeadings();
+    
+    return doc.body.innerHTML;
+}
