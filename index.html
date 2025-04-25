@@ -40,7 +40,6 @@
                 <div class="tabs">
                     <button class="tab-button active" data-tab="htmlTab">HTML для WordPress</button>
                     <button class="tab-button" data-tab="imagesTab">Зображення</button>
-                    <button class="tab-button" data-tab="previewTab">Попередній перегляд</button>
                 </div>
 
                 <div class="tab-content active" id="htmlTab">
@@ -63,10 +62,6 @@
                     </div>
                     <div id="imagesList" class="images-list"></div>
                 </div>
-
-                <div class="tab-content" id="previewTab">
-                    <div id="previewContent"></div>
-                </div>
             </section>
         </main>
         
@@ -78,6 +73,7 @@
     <!-- Підключаємо необхідні бібліотеки -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="js/html-extractor.js"></script>
     
     <script>
         // Глобальні змінні
@@ -98,7 +94,6 @@
         const resultsSection = document.getElementById('resultsSection');
         const htmlContent = document.getElementById('htmlContent');
         const imagesList = document.getElementById('imagesList');
-        const previewContent = document.getElementById('previewContent');
         const copyHtmlButton = document.getElementById('copyHtmlButton');
         const downloadHtmlButton = document.getElementById('downloadHtmlButton');
         const downloadImagesButton = document.getElementById('downloadImagesButton');
@@ -227,7 +222,7 @@
                     });
                 }
                 
-                // Якщо HTML не знайдено, шукаємо DOCX
+                // Якщо HTML не знайдено, шукаємо DOCX.MD
                 if (!contentFile) {
                     zip.forEach((relativePath, zipEntry) => {
                         if (!zipEntry.dir && relativePath.toLowerCase().endsWith('.docx.md')) {
@@ -280,7 +275,7 @@
                     };
                     
                     updateProgress(60 + Math.floor((i / imageEntries.length) * 20), 
-                                   `Зчитування зображень: ${i+1}/${imageEntries.length}`);
+                                `Зчитування зображень: ${i+1}/${imageEntries.length}`);
                 }
                 
                 // Обробляємо контент
@@ -290,7 +285,8 @@
                 if (contentType === 'markdown') {
                     processedHtml = convertMarkdownToWordPress(content);
                 } else {
-                    processedHtml = convertHtmlToWordPress(content);
+                    const htmlExtractor = new HtmlExtractor();
+                    processedHtml = htmlExtractor.processHtmlForWordPress(content);
                 }
                 
                 // Оновлюємо назви зображень
@@ -324,13 +320,13 @@
             html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
             html = html.replace(/^## (.*?)$/gm, function(match, heading) {
                 const anchor = heading.toLowerCase()
-                    .replace(/[^\w\s-]/g, '')
+                    .replace(/[^\wа-яґєіїё\s-]/gi, '')
                     .replace(/\s+/g, '-');
                 return `<h2 id="${anchor}">${heading}</h2>`;
             });
             html = html.replace(/^### (.*?)$/gm, function(match, heading) {
                 const anchor = heading.toLowerCase()
-                    .replace(/[^\w\s-]/g, '')
+                    .replace(/[^\wа-яґєіїё\s-]/gi, '')
                     .replace(/\s+/g, '-');
                 return `<h3 id="${anchor}">${heading}</h3>`;
             });
@@ -355,13 +351,6 @@
             return tableOfContents + '\n\n' + html;
         }
         
-        // Функція для конвертації HTML в HTML для WordPress
-        function convertHtmlToWordPress(html) {
-            // Тут можна додати додаткові перетворення для HTML
-            // В базовому варіанті просто повертаємо як є
-            return html;
-        }
-        
         // Функція для вилучення заголовків
         function extractHeadings(markdown) {
             const headings = [];
@@ -372,7 +361,7 @@
                 if (line.startsWith('## ')) {
                     const headingText = line.replace('## ', '').trim();
                     const anchor = headingText.toLowerCase()
-                        .replace(/[^\w\s-]/g, '')
+                        .replace(/[^\wа-яґєіїё\s-]/gi, '')
                         .replace(/\s+/g, '-');
                     
                     headings.push({
@@ -383,7 +372,7 @@
                 } else if (line.startsWith('### ')) {
                     const headingText = line.replace('### ', '').trim();
                     const anchor = headingText.toLowerCase()
-                        .replace(/[^\w\s-]/g, '')
+                        .replace(/[^\wа-яґєіїё\s-]/gi, '')
                         .replace(/\s+/g, '-');
                     
                     headings.push({
@@ -517,12 +506,12 @@
             return resultLines.join('\n');
         }
         
-        // Функція для обробки та перейменування зображень
+        // Покращена функція для перейменування зображень
         function processAndRenameImages(content, images) {
             const processedImages = [];
             const imageCaptions = {};
             
-            // Знаходимо всі підписи до зображень у форматі ![][imageX]  ***Caption text***
+            // Знаходимо всі підписи до зображень у форматі ![][imageX] ***Caption text***
             const captionRegex = /!\[\]\[image(\d+)\]\s+\*\*\*(.*?)\*\*\*/g;
             let captionMatch;
             
@@ -530,6 +519,28 @@
                 const imageNum = captionMatch[1];
                 const caption = captionMatch[2].trim();
                 imageCaptions[imageNum] = caption;
+            }
+            
+            // Аналізуємо HTML-контент для пошуку alt-текстів зображень
+            const parser = new DOMParser();
+            let imgAltTexts = {};
+            
+            try {
+                const doc = parser.parseFromString(content, 'text/html');
+                const imgElements = doc.querySelectorAll('img');
+                
+                imgElements.forEach((img, index) => {
+                    const altText = img.getAttribute('alt');
+                    if (altText && altText.trim() !== '') {
+                        // Спробуємо знайти номер зображення з src або з порядкового номера
+                        const srcMatch = img.getAttribute('src')?.match(/image(\d+)/i);
+                        const imageNum = srcMatch ? srcMatch[1] : (index + 1).toString();
+                        
+                        imgAltTexts[imageNum] = altText.trim();
+                    }
+                });
+            } catch (e) {
+                console.log('Не вдалося проаналізувати HTML для alt-текстів');
             }
             
             // Перебираємо всі зображення та створюємо нові назви
@@ -540,7 +551,9 @@
                 if (imageMatch) {
                     const imageNum = imageMatch[1];
                     const imageExt = imageMatch[2];
-                    const caption = imageCaptions[imageNum] || '';
+                    
+                    // Пріоритетність: підпис з Markdown > alt-текст з HTML > назва файлу
+                    let caption = imageCaptions[imageNum] || imgAltTexts[imageNum] || '';
                     
                     let newName = '';
                     if (caption) {
@@ -554,8 +567,8 @@
                         // Додаємо розширення файлу
                         newName = `${newName}.${imageExt}`;
                     } else {
-                        // Якщо немає підпису, залишаємо оригінальну назву
-                        newName = imageFile;
+                        // Якщо немає підпису, використовуємо більш описову назву
+                        newName = `image-${imageNum}.${imageExt}`;
                     }
                     
                     // Зберігаємо нову назву
@@ -581,7 +594,7 @@
             statusMessage.textContent = message;
         }
         
-        // Функція для відображення результатів
+        // Функція для відображення результатів (без вкладки з попереднім переглядом)
         function displayResults() {
             // Приховуємо розділ обробки та показуємо розділ результатів
             processingSection.style.display = 'none';
@@ -616,9 +629,6 @@
                 
                 imagesList.appendChild(imageItem);
             });
-            
-            // Показуємо попередній перегляд HTML
-            previewContent.innerHTML = processedHtml;
             
             // Додаємо обробники подій для кнопок
             copyHtmlButton.addEventListener('click', () => {
