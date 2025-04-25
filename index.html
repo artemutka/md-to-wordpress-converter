@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конвертер MD/HTML для WordPress</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Конвертер статей для WordPress</h1>
+            <p>Завантажте ZIP-архів з вашою статтею та зображеннями для перетворення в формат WordPress</p>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <div class="drop-area" id="dropArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Перетягніть ZIP-файл сюди</h3>
+                    <p>або</p>
+                    <label for="fileInput" class="upload-button">Виберіть файл</label>
+                    <input type="file" id="fileInput" accept=".zip" hidden>
+                </div>
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <p>Обраний файл: <span id="fileName"></span></p>
+                    <button id="processButton" class="process-button">Обробити файл</button>
+                </div>
+            </section>
+
+            <section class="processing-section" id="processingSection" style="display: none;">
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <p id="statusMessage">Обробка файлу...</p>
+            </section>
+
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="htmlTab">HTML для WordPress</button>
+                    <button class="tab-button" data-tab="imagesTab">Зображення</button>
+                    <button class="tab-button" data-tab="previewTab">Попередній перегляд</button>
+                </div>
+
+                <div class="tab-content active" id="htmlTab">
+                    <div class="actions">
+                        <button id="copyHtmlButton" class="action-button">
+                            <i class="fas fa-copy"></i> Копіювати HTML
+                        </button>
+                        <button id="downloadHtmlButton" class="action-button">
+                            <i class="fas fa-download"></i> Завантажити HTML
+                        </button>
+                    </div>
+                    <pre id="htmlContent" class="code-block"></pre>
+                </div>
+
+                <div class="tab-content" id="imagesTab">
+                    <div class="actions">
+                        <button id="downloadImagesButton" class="action-button">
+                            <i class="fas fa-download"></i> Завантажити ZIP з перейменованими зображеннями
+                        </button>
+                    </div>
+                    <div id="imagesList" class="images-list"></div>
+                </div>
+
+                <div class="tab-content" id="previewTab">
+                    <div id="previewContent
