@@ -1,50 +1,139 @@
 /**
  * HTML Content Extractor for WordPress
- * Extracts relevant content from complex HTML files for WordPress editor
+ * Improved version with better content extraction and image processing
  */
 
 class HtmlExtractor {
     constructor() {
-        this.contentSelectors = ['#contents', '.article-content', '.post-content', '.content', 'article', 'main'];
-        this.blockElements = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'ul', 'ol', 'blockquote', 'figure', 'div'];
+        // Основні селектори для пошуку основного контенту
+        this.contentSelectors = [
+            'article', 
+            'main', 
+            '.content', 
+            '.post-content', 
+            '.article-content', 
+            '#content', 
+            '.entry-content',
+            '.post',
+            '.article',
+            '#main-content',
+            '.main-content'
+        ];
+        
+        // Елементи, які слід видалити з контенту
+        this.elementsToRemove = [
+            'script', 
+            'style', 
+            'noscript', 
+            'iframe', 
+            'header', 
+            'footer', 
+            'nav', 
+            'aside', 
+            '.sidebar', 
+            '.comments', 
+            '.advertisement',
+            '.ads',
+            '.share-buttons',
+            '.social-share',
+            '.menu',
+            '.related-posts',
+            '.author-info',
+            '.post-meta',
+            '.navigation',
+            '.pagination'
+        ];
+        
+        // Блокові елементи, які можуть містити корисний контент
+        this.blockElements = [
+            'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+            'table', 'ul', 'ol', 'blockquote', 'figure', 
+            'div', 'section', 'article', 'aside', 'details', 
+            'figcaption', 'pre', 'dl', 'hr'
+        ];
+        
+        // Базова URL для виправлення відносних шляхів
+        this.baseUrl = 'https://xgate.dental';
     }
 
     /**
-     * Extract clean HTML content from a full HTML document
+     * Обробляє HTML для WordPress 
+     * @param {string} htmlString - вхідний HTML документ
+     * @returns {string} - оброблений HTML для WordPress
+     */
+    processHtmlForWordPress(htmlString) {
+        try {
+            // Очищуємо HTML від непотрібних елементів
+            const cleanContent = this.extractContent(htmlString);
+            
+            // Генеруємо зміст на основі заголовків
+            const toc = this.generateTableOfContents(cleanContent);
+            
+            // Об'єднуємо все
+            return toc + '\n\n' + cleanContent;
+        } catch (error) {
+            console.error('Помилка обробки HTML:', error);
+            return htmlString; // У випадку помилки, повертаємо оригінальний HTML
+        }
+    }
+
+    /**
+     * Витягує корисний контент з HTML
+     * @param {string} htmlString - вхідний HTML
+     * @returns {string} - очищений HTML
      */
     extractContent(htmlString) {
-        // Create a DOM parser
+        // Парсимо HTML
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
         
-        // Remove head, script, style and other unnecessary elements
+        // Видаляємо непотрібні елементи
         this.removeUnnecessaryElements(doc);
         
-        // Try to locate the main content area
+        // Шукаємо основний контейнер контенту
         const contentElement = this.findContentElement(doc);
         
         if (contentElement) {
-            return this.cleanupContent(contentElement);
+            // Обробляємо контент і зображення
+            return this.processContent(contentElement);
         } else {
-            // If we couldn't find a specific content area, extract content from body
-            return this.extractContentFromBody(doc.body);
+            // Якщо не вдалося знайти основний контейнер, 
+            // обробляємо все тіло документа
+            return this.processContent(doc.body);
         }
     }
     
     /**
-     * Remove unnecessary elements from the document
+     * Видаляє службові/непотрібні елементи з HTML
+     * @param {Document} doc - HTML документ
      */
     removeUnnecessaryElements(doc) {
-        const elementsToRemove = ['script', 'style', 'noscript', 'iframe', 'meta', 'link', 'head'];
-        
-        elementsToRemove.forEach(tag => {
+        // Видаляємо елементи за тегами
+        const basicElementsToRemove = ['script', 'style', 'noscript', 'iframe', 'meta', 'link', 'head'];
+        basicElementsToRemove.forEach(tag => {
             const elements = doc.getElementsByTagName(tag);
             for (let i = elements.length - 1; i >= 0; i--) {
-                elements[i].parentNode.removeChild(elements[i]);
+                if (elements[i].parentNode) {
+                    elements[i].parentNode.removeChild(elements[i]);
+                }
             }
         });
         
-        // Remove comments
+        // Видаляємо елементи за складнішими селекторами
+        this.elementsToRemove.forEach(selector => {
+            try {
+                const elements = doc.querySelectorAll(selector);
+                elements.forEach(el => {
+                    if (el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
+            } catch (e) {
+                // Ігноруємо помилки з невалідними селекторами
+            }
+        });
+        
+        // Видаляємо коментарі
         const removeComments = (node) => {
             if (!node) return;
             
@@ -62,86 +151,97 @@ class HtmlExtractor {
     }
     
     /**
-     * Find the main content element in the document
+     * Шукає основний контейнер з контентом
+     * @param {Document} doc - HTML документ
+     * @returns {Element|null} - знайдений елемент або null
      */
     findContentElement(doc) {
-        // Try to find the content by common selectors
+        // Спочатку шукаємо за стандартними селекторами
         for (const selector of this.contentSelectors) {
-            const element = doc.querySelector(selector);
-            if (element) return element;
-        }
-        
-        // If we couldn't find by selectors, try other heuristics
-        // 1. Find the element with the most paragraph tags
-        const paragraphCounts = new Map();
-        const elements = doc.querySelectorAll('div, article, section, main');
-        
-        for (const element of elements) {
-            const paragraphs = element.querySelectorAll('p');
-            if (paragraphs.length > 3) {
-                paragraphCounts.set(element, paragraphs.length);
+            try {
+                const element = doc.querySelector(selector);
+                if (element) return element;
+            } catch (e) {
+                // Ігноруємо невалідні селектори
             }
         }
         
-        if (paragraphCounts.size > 0) {
-            // Sort by paragraph count and return the element with the most paragraphs
-            const [element] = [...paragraphCounts.entries()].sort((a, b) => b[1] - a[1])[0];
-            return element;
+        // Якщо стандартні селектори не спрацювали,
+        // шукаємо за евристиками
+        
+        // 1. Знаходимо елемент з найбільшою кількістю абзаців
+        const candidates = doc.querySelectorAll('div, article, section, main');
+        let bestElement = null;
+        let maxParagraphs = 3; // Мінімальний поріг
+        
+        for (const element of candidates) {
+            const paragraphs = element.querySelectorAll('p');
+            if (paragraphs.length > maxParagraphs) {
+                maxParagraphs = paragraphs.length;
+                bestElement = element;
+            }
         }
         
-        return null;
-    }
-    
-    /**
-     * Clean up the content element
-     */
-    cleanupContent(element) {
-        // Clone the element to avoid modifying the original
-        const contentElement = element.cloneNode(true);
+        // 2. Якщо знайшли елемент з достатньою кількістю абзаців
+        if (bestElement) {
+            return bestElement;
+        }
         
-        // Replace image references with WordPress format
-        this.processImages(contentElement);
+        // 3. Пошук за співвідношенням тексту до HTML
+        let bestRatio = 0;
+        let bestRatioElement = null;
         
-        // Create and return the HTML string
-        return contentElement.innerHTML;
-    }
-    
-    /**
-     * Extract content directly from body when no specific content container is found
-     */
-    extractContentFromBody(bodyElement) {
-        if (!bodyElement) return '';
-        
-        const content = document.createElement('div');
-        
-        // Process each child of the body
-        for (const child of Array.from(bodyElement.childNodes)) {
-            // Skip empty text nodes
-            if (child.nodeType === 3 && child.textContent.trim() === '') continue;
-            
-            // Skip irrelevant elements
-            if (child.nodeType === 1) {
-                const tagName = child.tagName.toLowerCase();
+        for (const element of candidates) {
+            if (element.textContent && element.textContent.trim()) {
+                const textLength = element.textContent.trim().length;
+                const htmlLength = element.innerHTML.length;
                 
-                // Skip navigation, headers, footers and empty divs
-                if (['nav', 'header', 'footer'].includes(tagName)) continue;
-                if (tagName === 'div' && !child.textContent.trim()) continue;
-                
-                // If it's a block element and has content, include it
-                if (this.blockElements.includes(tagName) && child.textContent.trim()) {
-                    content.appendChild(child.cloneNode(true));
+                if (htmlLength > 0) {
+                    const ratio = textLength / htmlLength;
+                    if (ratio > bestRatio) {
+                        bestRatio = ratio;
+                        bestRatioElement = element;
+                    }
                 }
             }
         }
         
-        // Process images
-        this.processImages(content);
+        if (bestRatioElement && bestRatio > 0.3) { // Евристичний поріг
+            return bestRatioElement;
+        }
         
-        return content.innerHTML;
+        // Якщо не знайшли жодного підходящого елемента
+        return null;
     }
     
     /**
-     * Process images - convert to WordPress format and suggest proper naming
+     * Обробляє контент та зображення
+     * @param {Element} element - елемент для обробки
+     * @returns {string} - оброблений HTML
+     */
+    processContent(element) {
+        // Створюємо глибоку копію, щоб не змінювати оригінал
+        const workingElement = element.cloneNode(true);
+        
+        // Обробляємо зображення
+        this.processImages(workingElement);
+        
+        // Доповнюємо якорі для заголовків
+        this.addAnchorsToHeadings(workingElement);
+        
+        // Виправляємо відносні шляхи в посиланнях
+        this.fixRelativeLinks(workingElement);
+        
+        // Видаляємо порожні елементи
+        this.removeEmptyElements(workingElement);
+        
+        // Повертаємо чистий HTML
+        return workingElement.innerHTML;
+    }
+    
+    /**
+     * Обробляє зображення і форматує їх у WordPress-стилі
+     * @param {Element} element - елемент з зображеннями
      */
     processImages(element) {
         const images = element.querySelectorAll('img');
@@ -151,12 +251,15 @@ class HtmlExtractor {
             const src = img.getAttribute('src');
             
             if (src) {
-                const filename = src.split('/').pop().split('?')[0];
+                // Виправляємо відносні шляхи
+                if (src.startsWith('/') || (!src.startsWith('http') && !src.startsWith('//'))) {
+                    img.setAttribute('src', this.resolveRelativePath(src));
+                }
                 
-                // Try to find the image caption
+                // Знаходимо підпис до зображення
                 let caption = '';
                 
-                // Check if the image is inside a figure with figcaption
+                // Перевіряємо підпис у figure/figcaption
                 const figure = img.closest('figure');
                 if (figure) {
                     const figcaption = figure.querySelector('figcaption');
@@ -165,59 +268,112 @@ class HtmlExtractor {
                     }
                 }
                 
-                // If no figcaption, check for an adjacent sibling with caption-like content
+                // Або перевіряємо alt і title атрибути
                 if (!caption) {
-                    let next = img.nextElementSibling;
-                    if (next && (next.classList.contains('caption') || 
-                                next.classList.contains('wp-caption-text') || 
-                                next.tagName === 'EM' || 
-                                next.tagName === 'I' ||
-                                next.style.fontStyle === 'italic')) {
-                        caption = next.textContent.trim();
-                    }
+                    caption = img.getAttribute('alt') || img.getAttribute('title') || '';
                 }
                 
-                // Generate a proper alt text
-                const alt = img.getAttribute('alt') || caption || filename;
+                // Додаємо alt-атрибут, якщо немає
+                if (!img.hasAttribute('alt')) {
+                    img.setAttribute('alt', caption || `Image ${i+1}`);
+                }
                 
-                // Create WordPress image HTML
-                const wpImage = caption
-                    ? `[caption align="aligncenter" width="100%"]<img src="${src}" alt="${alt}" /> ${caption}[/caption]`
-                    : `<img src="${src}" alt="${alt}" />`;
-                
-                // Create a new wrapper element
-                const wrapper = document.createElement('div');
-                wrapper.innerHTML = wpImage;
-                
-                // Replace the image with the WordPress formatted version
-                if (figure && figure.querySelector('figcaption')) {
-                    // Replace the entire figure element
-                    figure.parentNode.replaceChild(wrapper, figure);
-                } else {
-                    // Replace just the image
-                    img.parentNode.replaceChild(wrapper, img);
+                // Перетворюємо на WordPress формат із підписом, якщо є
+                if (caption && figure) {
+                    const wpImage = document.createElement('div');
+                    wpImage.innerHTML = `[caption align="aligncenter" width="100%"]<img src="${img.getAttribute('src')}" alt="${img.getAttribute('alt')}" /> ${caption}[/caption]`;
+                    figure.parentNode.replaceChild(wpImage, figure);
                 }
             }
         }
     }
     
     /**
-     * Generate a table of contents from HTML headings
+     * Додає якорі до заголовків для навігації
+     * @param {Element} element - елемент з заголовками
      */
-    generateTableOfContents(htmlContent) {
-        const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
+    addAnchorsToHeadings(element) {
+        const headings = element.querySelectorAll('h2, h3');
+        
+        headings.forEach(heading => {
+            // Якщо заголовок ще не має id
+            if (!heading.id) {
+                const text = heading.textContent.trim();
+                const anchor = text.toLowerCase()
+                    .replace(/[^\wа-яґєіїё\s-]/gi, '')
+                    .replace(/\s+/g, '-');
+                
+                heading.id = anchor;
+            }
+        });
+    }
+    
+    /**
+     * Виправляє відносні шляхи у посиланнях
+     * @param {Element} element - елемент з посиланнями
+     */
+    fixRelativeLinks(element) {
+        const links = element.querySelectorAll('a');
+        
+        links.forEach(link => {
+            const href = link.getAttribute('href');
+            
+            if (href && (href.startsWith('/') || (!href.startsWith('http') && !href.startsWith('#') && !href.startsWith('mailto:')))) {
+                link.setAttribute('href', this.resolveRelativePath(href));
+            }
+        });
+    }
+    
+    /**
+     * Перетворює відносний шлях на абсолютний
+     * @param {string} path - відносний шлях
+     * @returns {string} - абсолютний шлях
+     */
+    resolveRelativePath(path) {
+        if (path.startsWith('/')) {
+            return `${this.baseUrl}${path}`;
+        } else {
+            return `${this.baseUrl}/${path}`;
+        }
+    }
+    
+    /**
+     * Видаляє порожні елементи
+     * @param {Element} element - елемент для очищення
+     */
+    removeEmptyElements(element) {
+        const emptyElements = element.querySelectorAll('p, div, span');
+        
+        emptyElements.forEach(el => {
+            if (!el.textContent.trim() && !el.querySelector('img, iframe, video, audio, canvas')) {
+                if (el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Генерує таблицю змісту на основі заголовків
+     * @param {string} html - HTML контент
+     * @returns {string} - HTML таблиці змісту
+     */
+    generateTableOfContents(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
         const headings = doc.querySelectorAll('h2, h3');
         
-        if (headings.length <= 1) return ''; // Don't generate TOC for just one heading
+        if (headings.length <= 1) {
+            return ''; // Не створюємо зміст для одного заголовка
+        }
         
         let tocHtml = '<div class="content-wrap">\n<h4>Зміст</h4>\n<ol class="nav-items">\n';
         
-        Array.from(headings).forEach(heading => {
+        headings.forEach(heading => {
             const text = heading.textContent.trim();
-            const tagName = heading.tagName.toLowerCase();
-            const level = parseInt(tagName.substring(1));
+            const level = parseInt(heading.tagName.substring(1));
             
-            // Get or create an id for the heading
+            // Створюємо або отримуємо якір
             let id = heading.id;
             if (!id) {
                 id = text.toLowerCase()
@@ -233,23 +389,9 @@ class HtmlExtractor {
         tocHtml += '</ol>\n</div>';
         return tocHtml;
     }
-    
-    /**
-     * Process HTML for WordPress
-     */
-    processHtmlForWordPress(htmlString) {
-        // Extract the main content
-        const content = this.extractContent(htmlString);
-        
-        // Generate table of contents
-        const toc = this.generateTableOfContents(content);
-        
-        // Return the combined result
-        return toc + '\n\n' + content;
-    }
 }
 
-// Export for use in browser environment
+// Експортуємо для використання у браузері
 if (typeof window !== 'undefined') {
     window.HtmlExtractor = HtmlExtractor;
 }
