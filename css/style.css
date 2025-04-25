@@ -1,11 +1,14 @@
+/* Загальні стилі */
 :root {
-    --primary-color: #2271b1;
-    --secondary-color: #135e96;
-    --light-color: #f0f0f1;
-    --dark-color: #1d2327;
-    --success-color: #00a32a;
-    --warning-color: #dba617;
-    --error-color: #d63638;
+    --primary-color: #3498db;
+    --primary-dark: #2980b9;
+    --secondary-color: #2ecc71;
+    --background-color: #f5f7fa;
+    --text-color: #34495e;
+    --border-color: #dce0e3;
+    --error-color: #e74c3c;
+    --success-color: #2ecc71;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 * {
@@ -15,10 +18,10 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
     line-height: 1.6;
-    color: #333;
-    background-color: #f0f6fc;
 }
 
 .container {
@@ -27,102 +30,158 @@ body {
     padding: 20px;
 }
 
+/* Заголовок */
 header {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
 }
 
 header h1 {
-    color: var(--primary-color);
+    font-size: 2.2rem;
     margin-bottom: 10px;
+    color: var(--text-color);
 }
 
-section {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    padding: 30px;
+header p {
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+/* Секція завантаження */
+.upload-section {
     margin-bottom: 30px;
 }
 
 .drop-area {
-    border: 2px dashed #ccc;
-    border-radius: 8px;
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
     padding: 40px;
     text-align: center;
+    background-color: white;
+    transition: all 0.3s ease;
     cursor: pointer;
-    transition: all 0.3s;
 }
 
-.drop-area:hover, .drop-area.active {
+.drop-area.active {
     border-color: var(--primary-color);
-    background-color: rgba(34, 113, 177, 0.05);
+    background-color: rgba(52, 152, 219, 0.05);
 }
 
 .drop-area i {
     font-size: 48px;
     color: var(--primary-color);
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
-.upload-button, .process-button, .action-button {
+.drop-area h3 {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+}
+
+.drop-area p {
+    margin-bottom: 15px;
+    opacity: 0.7;
+}
+
+.upload-button {
+    display: inline-block;
+    padding: 10px 20px;
     background-color: var(--primary-color);
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
-    font-size: 16px;
-    display: inline-block;
-    transition: background-color 0.3s;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
 }
 
-.upload-button:hover, .process-button:hover, .action-button:hover {
-    background-color: var(--secondary-color);
+.upload-button:hover {
+    background-color: var(--primary-dark);
 }
 
 .file-info {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
     margin-top: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.process-button {
+    padding: 10px 25px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.process-button:hover {
+    background-color: #27ae60;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Секція обробки */
+.processing-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     text-align: center;
 }
 
-.file-info p {
-    margin-bottom: 15px;
-}
-
 .progress {
-    height: 20px;
-    background-color: #e0e0e0;
-    border-radius: 10px;
-    margin: 20px 0;
+    height: 10px;
+    background-color: #eee;
+    border-radius: 5px;
+    margin-bottom: 20px;
     overflow: hidden;
 }
 
 .progress-bar {
     height: 100%;
     background-color: var(--primary-color);
-    width: 0%;
-    transition: width 0.3s;
+    width: 0;
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+/* Секція результатів */
+.results-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .tabs {
     display: flex;
-    border-bottom: 1px solid #ddd;
     margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .tab-button {
+    padding: 10px 20px;
     background: none;
     border: none;
-    padding: 10px 20px;
+    font-size: 1rem;
     cursor: pointer;
-    font-size: 16px;
     opacity: 0.7;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
 }
 
 .tab-button.active {
     opacity: 1;
-    border-bottom: 2px solid var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+    font-weight: 600;
 }
 
 .tab-content {
@@ -134,92 +193,89 @@ section {
 }
 
 .actions {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     display: flex;
     gap: 10px;
 }
 
-.code-block {
-    background-color: #f5f5f5;
-    padding: 15px;
+.action-button {
+    padding: 8px 15px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
     border-radius: 5px;
-    overflow: auto;
-    font-family: 'Courier New', monospace;
-    height: 400px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.action-button:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.code-block {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-family: monospace;
     white-space: pre-wrap;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
 }
 
 .images-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 20px;
+    gap: 20px;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 .image-item {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
     padding: 10px;
-    background-color: #f9f9f9;
+    display: flex;
+    flex-direction: column;
 }
 
 .image-item img {
-    max-width: 100%;
-    height: auto;
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 5px;
     margin-bottom: 10px;
 }
 
 .image-name {
-    font-size: 14px;
+    font-size: 0.85rem;
     margin-bottom: 5px;
+    word-break: break-all;
+    color: var(--text-color);
 }
 
 .image-new-name {
-    font-weight: bold;
+    font-size: 0.85rem;
+    font-weight: 600;
     color: var(--primary-color);
+    word-break: break-all;
 }
 
-#previewContent {
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: white;
-    height: 600px;
-    overflow: auto;
-}
-
-.tooltip {
-    position: relative;
-    display: inline-block;
-}
-
-.tooltip .tooltiptext {
-    visibility: hidden;
-    width: 120px;
-    background-color: #555;
-    color: #fff;
-    text-align: center;
-    border-radius: 6px;
-    padding: 5px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -60px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-}
-
+/* Футер */
 footer {
     text-align: center;
     margin-top: 30px;
-    color: #666;
-    font-size: 14px;
+    padding: 20px 0;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    opacity: 0.7;
 }
 
 footer a {
@@ -227,133 +283,45 @@ footer a {
     text-decoration: none;
 }
 
-/* Стилі для preview контенту */
-#previewContent h1,
-#previewContent h2,
-#previewContent h3,
-#previewContent h4 {
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    color: var(--primary-color);
-}
-
-#previewContent h1 {
-    font-size: 2em;
-}
-
-#previewContent h2 {
-    font-size: 1.5em;
-}
-
-#previewContent h3 {
-    font-size: 1.25em;
-}
-
-#previewContent p {
-    margin-bottom: 1em;
-}
-
-#previewContent ul, 
-#previewContent ol {
-    margin-left: 2em;
-    margin-bottom: 1em;
-}
-
-#previewContent img {
-    max-width: 100%;
-    height: auto;
-    margin: 1em 0;
-}
-
-#previewContent table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1em 0;
-}
-
-#previewContent table, 
-#previewContent th, 
-#previewContent td {
-    border: 1px solid #ddd;
-}
-
-#previewContent th, 
-#previewContent td {
-    padding: 8px;
-    text-align: left;
-}
-
-#previewContent th {
-    background-color: #f5f5f5;
-}
-
-#previewContent .content-wrap {
-    background-color: #f5f5f5;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-}
-
-#previewContent .nav-items {
-    margin-left: 1.5em;
-}
-
-#previewContent .nav-items a {
-    color: var(--primary-color);
-    text-decoration: none;
-}
-
-#previewContent .nav-items a:hover {
+footer a:hover {
     text-decoration: underline;
 }
 
-/* Адаптивний дизайн */
+/* Адаптивність */
 @media (max-width: 768px) {
     .container {
-        padding: 10px;
+        padding: 15px;
     }
     
-    section {
-        padding: 15px;
+    header h1 {
+        font-size: 1.8rem;
     }
     
     .drop-area {
         padding: 20px;
     }
     
-    .images-list {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    .file-info {
+        flex-direction: column;
+        gap: 15px;
     }
     
     .tabs {
-        flex-wrap: wrap;
+        flex-direction: column;
+        border-bottom: none;
     }
     
     .tab-button {
-        padding: 8px 15px;
-        font-size: 14px;
+        border-bottom: none;
+        border-left: 3px solid transparent;
+        text-align: left;
+        padding: 10px;
     }
     
-    .code-block {
-        height: 300px;
-    }
-    
-    #previewContent {
-        height: 400px;
-    }
-}
-
-@media (max-width: 480px) {
-    header h1 {
-        font-size: 1.5em;
-    }
-    
-    .drop-area i {
-        font-size: 36px;
-    }
-    
-    .images-list {
-        grid-template-columns: 1fr;
+    .tab-button.active {
+        border-bottom: none;
+        border-left: 3px solid var(--primary-color);
+        background-color: rgba(52, 152, 219, 0.05);
     }
     
     .actions {
@@ -362,5 +330,60 @@ footer a {
     
     .action-button {
         width: 100%;
+        justify-content: center;
     }
+}
+
+/* Покращені стилі для результуючого HTML в WordPress */
+.content-wrap {
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px solid #e5e5e5;
+}
+
+.content-wrap h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.nav-items {
+    padding-left: 20px;
+}
+
+.nav-items li {
+    margin-bottom: 8px;
+}
+
+.nav-items a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.nav-items a:hover {
+    text-decoration: underline;
+}
+
+/* Покращені стилі для HTML таблиць */
+.wp-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.wp-table th, 
+.wp-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.wp-table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.wp-table tr:hover {
+    background-color: #f9f9f9;
 }
